@@ -268,7 +268,7 @@ jobs:
           echo Now running tests as non-root user:
           tuser=test
           thome=/home/$tuser
-          pw userdel -n $tuser || true
+          #pw userdel -n $tuser || true
           pw useradd -n $tuser -d $thome -m
           echo "$tuser ALL=NOPASSWD:$(command -v zfs),$(command -v zpool)" >> /usr/local/etc/sudoers
 
@@ -327,7 +327,7 @@ jobs:
           echo Now running tests as non-root user:
           tuser=test
           thome=/home/$tuser
-          pw userdel -n $tuser || true
+          #pw userdel -n $tuser || true
           pw useradd -n $tuser -d $thome -m
           echo "$tuser ALL=NOPASSWD:$(command -v zfs),$(command -v zpool)" >> /usr/local/etc/sudoers
 
