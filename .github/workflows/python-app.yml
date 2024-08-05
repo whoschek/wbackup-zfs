@@ -262,14 +262,14 @@ jobs:
           cat $HOME/.ssh/id_rsa.pub >> $HOME/.ssh/authorized_keys
           ls -al $HOME $HOME/.ssh/id_rsa
 
-          echo Now running tests as root user; ./test.sh
-          echo Now running coverage; ./coverage.sh
+          echo Now running tests as root user; ./test.sh || exit 1
+          echo Now running coverage; ./coverage.sh || exit 1
           
           echo Now running tests as non-root user:
           tuser=test
           thome=/home/$tuser
           #pw userdel -n $tuser || true
-          pw useradd -n $tuser -d $thome -m
+          pw useradd $tuser -d $thome -m
           echo "$tuser ALL=NOPASSWD:$(command -v zfs),$(command -v zpool)" >> /usr/local/etc/sudoers
 
           mkdir -p $thome/.ssh
@@ -321,27 +321,40 @@ jobs:
           ls -al $HOME
           chsh -s /bin/sh
 
-          echo Now running tests as root user; ./test.sh
-          echo Now running coverage; ./coverage.sh
+          echo Now running tests as root user; ./test.sh || exit 1
+          echo Now running coverage; ./coverage.sh || exit 1
           
           echo Now running tests as non-root user:
           tuser=test
           thome=/home/$tuser
           #pw userdel -n $tuser || true
-          pw useradd -n $tuser -d $thome -m
+          echo xxx0
+          pw useradd $tuser -d $thome -m
+          echo xxx1
           echo "$tuser ALL=NOPASSWD:$(command -v zfs),$(command -v zpool)" >> /usr/local/etc/sudoers
+          echo xxx2
 
           mkdir -p $thome/.ssh
+          echo xxx3
           cp -p $HOME/.ssh/id_rsa $HOME/.ssh/id_rsa.pub $thome/.ssh/
+          echo xxx4
           cat $HOME/.ssh/id_rsa.pub >> $thome/.ssh/authorized_keys
+          echo xxx5
           chmod go-rwx $thome/.ssh/authorized_keys
+          echo xxx6
           chown -R $tuser $thome/.ssh
+          echo xxx7
 
           cp -Rp . $thome/wbackup-zfs # if running with Github Action
+          echo xxx8
           # cp -Rp wbackup-zfs $thome/ # if running with https://github.com/vmactions/shell-freebsd
           chown -R $tuser $thome/wbackup-zfs
-          chsh -s /bin/sh $tuser 
+          echo xxx9
+          chsh -s /bin/sh $tuser
+          echo xxx10          
           sudo -u $tuser sh -c "cd $thome/wbackup-zfs; ./test.sh"
+          echo xxx11
+
     - name: Upload code coverage report to workflow run page
       uses: ./.github/workflows/coverage-upload
 
