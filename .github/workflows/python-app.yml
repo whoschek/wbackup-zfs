@@ -329,12 +329,12 @@ jobs:
           echo Now running tests as non-root user:
           find .
           export tuser=test
-          export thome=/home/$tuser
+          export thome=/usr/home/$tuser
           #pw userdel -n $tuser || true
           echo xxx0 
-          mkdir -p /home
+          mkdir -p /usr/home
           echo xxx01
-          mkdir -p /home/foo
+          mkdir -p /usr/home/foo
           echo xxx02
           pw useradd $tuser -d $thome -m
           echo xxx1
