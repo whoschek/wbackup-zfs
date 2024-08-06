@@ -244,6 +244,7 @@ jobs:
           pkg install -y python3 sudo zstd pv mbuffer devel/py-coverage
         run: |
           set -e
+          set -x
           id -u -n
           uname -a
           zfs --version || true
