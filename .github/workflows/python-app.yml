@@ -316,7 +316,7 @@ jobs:
           ls -al $HOME
           chsh -s /bin/sh
 
-          echo Now running coverage; ./coverage.sh; if ($status != 0) exit 1
+          #echo Now running coverage; ./coverage.sh; if ($status != 0) exit 1
           
           echo Now running tests as non-root user:
           find .
@@ -331,7 +331,9 @@ jobs:
           echo xxx1
           echo "$tuser ALL=NOPASSWD:`command -v zfs`,`command -v zpool`" >> /usr/local/etc/sudoers
           echo xxx2
-
+          cat /usr/local/etc/sudoers
+          exit 1
+          echo xxx2a
           mkdir -p $thome/.ssh
           echo xxx3
           cp -p $HOME/.ssh/id_rsa $HOME/.ssh/id_rsa.pub $HOME/.ssh/authorized_key $thome/.ssh/
