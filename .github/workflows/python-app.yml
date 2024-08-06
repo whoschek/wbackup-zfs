@@ -329,7 +329,7 @@ jobs:
           echo xxx02
           pw useradd $tuser -d $thome -m
           echo xxx1
-          echo "$tuser ALL=NOPASSWD:`which zfs`,`which zpool`" >> /usr/local/etc/sudoers
+          echo "$tuser ALL=NOPASSWD:`command -v zfs`,`command -v zpool`" >> /usr/local/etc/sudoers
           echo xxx2
 
           mkdir -p $thome/.ssh
