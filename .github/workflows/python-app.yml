@@ -263,8 +263,6 @@ jobs:
           cat $HOME/.ssh/id_rsa.pub >> $HOME/.ssh/authorized_keys
           ls -al $HOME $HOME/.ssh/id_rsa
 
-          echo Now running tests as root user; ./test.sh
-          echo Now running coverage; ./coverage.sh
           
           echo Now running tests as non-root user:
           tuser=test
@@ -278,16 +276,16 @@ jobs:
           chmod go-rwx $thome/.ssh/authorized_keys
           chown -R $tuser $thome/.ssh
 
-          echo tuser is $tuser
+          echo "tuser is $tuser"
           find .
-          echo thome is $thome
-          find $thome
+          echo "thome is $thome"
+          find "$thome"
           echo xxx0
-          cp -R . $thome/wbackup-zfs
+          cp -R . "$thome/wbackup-zfs"
           echo xxx1
-          find $thome
+          find "$thome"
           echo xxx1a
-          chown -R $tuser $thome/wbackup-zfs
+          chown -R $tuser "$thome/wbackup-zfs"
           echo xxx2
           sudo -u $tuser sh -c "cd $thome/wbackup-zfs; ./test.sh"
           echo wbackup-zfs-testrun-success
@@ -365,6 +363,8 @@ jobs:
       uses: vmactions/solaris-vm@v1  # see https://github.com/vmactions/solaris-vm
       with:
         release: "11.4"
+#          echo Now running tests as root user; ./test.sh
+#          echo Now running coverage; ./coverage.sh
 #          pkg update --accept; reboot # FIXME: reboot disconnects
 #          pkg exact-install runtime/python-37  # FIXME: install fails
 #          pkg install runtime/python-39  # FIXME: install fails
