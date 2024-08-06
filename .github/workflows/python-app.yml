@@ -244,6 +244,7 @@ jobs:
       uses: vmactions/freebsd-vm@v1  # see https://github.com/vmactions/freebsd-vm
       with:
         release: "14.1"
+        usesh: true
         prepare: |
           set -e
           pkg install -y python3 sudo zstd pv mbuffer devel/py-coverage
