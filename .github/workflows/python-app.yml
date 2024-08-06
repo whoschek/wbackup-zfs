@@ -261,8 +261,8 @@ jobs:
           cat $HOME/.ssh/id_rsa.pub >> $HOME/.ssh/authorized_keys
           ls -al $HOME $HOME/.ssh/id_rsa
 
-          #echo Now running tests as root user; ./test.sh
-          #echo Now running coverage; ./coverage.sh
+          echo Now running tests as root user; ./test.sh
+          echo Now running coverage; ./coverage.sh
           
           echo Now running tests as non-root user:
           tuser=test
@@ -298,7 +298,7 @@ jobs:
         prepare: |
           pkg install -y python3 sudo zstd pv mbuffer devel/py-coverage
         run: |
-          # Note: csh syntax following here (not bash)
+          # Note: csh syntax following here as default shell on freebsd <= 13 is csh instead of sh
           id -u -n
           uname -a
           zfs --version
