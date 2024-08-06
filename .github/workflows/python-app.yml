@@ -331,7 +331,11 @@ jobs:
           export tuser=test
           export thome=/home/$tuser
           #pw userdel -n $tuser || true
-          echo xxx0
+          echo xxx0 
+          mkdir -p /home
+          echo xxx01
+          mkdir -p /home/foo
+          echo xxx02
           pw useradd $tuser -d $thome -m
           echo xxx1
           echo "$tuser ALL=NOPASSWD:$(command -v zfs),$(command -v zpool)" | tee -a /usr/local/etc/sudoers
