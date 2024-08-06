@@ -240,10 +240,8 @@ jobs:
       with:
         release: "14.1"
         prepare: |
-          set -e
           pkg install -y python3 sudo zstd pv mbuffer devel/py-coverage
         run: |
-          set -e
           id -u -n
           uname -a
           zfs --version || true
@@ -297,10 +295,8 @@ jobs:
       with:
         release: "13.3"
         prepare: |
-          set -e
           pkg install -y python3 sudo zstd pv mbuffer devel/py-coverage
         run: |
-          set -e
           id -u -n
           uname -a
           false
