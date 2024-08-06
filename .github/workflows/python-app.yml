@@ -266,8 +266,8 @@ jobs:
           echo Now running coverage; ./coverage.sh || exit 1
           
           echo Now running tests as non-root user:
-          tuser=test
-          thome=/home/$tuser
+          export tuser=test
+          export thome=/home/$tuser
           #pw userdel -n $tuser || true
           pw useradd $tuser -d $thome -m
           echo "$tuser ALL=NOPASSWD:$(command -v zfs),$(command -v zpool)" >> /usr/local/etc/sudoers
@@ -325,8 +325,8 @@ jobs:
           echo Now running coverage; ./coverage.sh || exit 1
           
           echo Now running tests as non-root user:
-          tuser=test
-          thome=/home/$tuser
+          export tuser=test
+          export thome=/home/$tuser
           #pw userdel -n $tuser || true
           echo xxx0
           pw useradd $tuser -d $thome -m
