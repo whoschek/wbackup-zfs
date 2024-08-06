@@ -323,7 +323,7 @@ jobs:
           ls -al $HOME
           chsh -s /bin/sh
 
-          echo Now running tests as root user; ./test.sh
+          #echo Now running tests as root user; ./test.sh
           echo Now running coverage; ./coverage.sh
           
           echo Now running tests as non-root user:
