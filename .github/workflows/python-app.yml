@@ -299,6 +299,7 @@ jobs:
         prepare: |
           pkg install -y python3 sudo zstd pv mbuffer devel/py-coverage
         run: |
+          # Note: csh syntax following here (not bash)
           id -u -n
           uname -a
           zfs --version
@@ -361,7 +362,6 @@ jobs:
           echo xxx9
           chsh -s /bin/sh $tuser
           echo xxx10
-          exit 1
           sudo -u $tuser sh -c "cd $thome/wbackup-zfs; ./test.sh"; if ($status != 0) exit 1
           echo xxx11
 
