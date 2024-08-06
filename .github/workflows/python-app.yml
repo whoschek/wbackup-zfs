@@ -315,7 +315,7 @@ jobs:
           ls -al $HOME
           chsh -s /bin/sh
 
-          echo Now running coverage; ./coverage.sh || exit 1
+          echo Now running coverage; ./coverage.sh; if ($status != 0) exit 1
           
           echo Now running tests as non-root user:
           find .
@@ -328,14 +328,12 @@ jobs:
           echo xxx02
           pw useradd $tuser -d $thome -m
           echo xxx1
-          echo "$tuser ALL=NOPASSWD:$(command -v zfs),$(command -v zpool)" | tee -a /usr/local/etc/sudoers
+          echo "$tuser ALL=NOPASSWD:$(command -v zfs),$(command -v zpool)" >> /usr/local/etc/sudoers
           echo xxx2
 
           mkdir -p $thome/.ssh
           echo xxx3
-          cp -p $HOME/.ssh/id_rsa $HOME/.ssh/id_rsa.pub $thome/.ssh/
-          echo xxx3a
-          cp -p $HOME/.ssh/authorized_keys $thome/.ssh/
+          cp -p $HOME/.ssh/id_rsa $HOME/.ssh/id_rsa.pub $HOME/.ssh/authorized_key $thome/.ssh/
           echo xxx4
           ls -al $HOME/.ssh
           echo xxx5
@@ -351,7 +349,7 @@ jobs:
           echo xxx9
           chsh -s /bin/sh $tuser
           echo xxx10          
-          sudo -u $tuser sh -c "cd $thome/wbackup-zfs; ./test.sh" || exit 1
+          sudo -u $tuser sh -c "cd $thome/wbackup-zfs; if ($status != 0) exit 1
           echo xxx11
 
     - name: Upload code coverage report to workflow run page
