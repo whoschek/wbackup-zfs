@@ -280,6 +280,7 @@ jobs:
           # cp -Rp wbackup-zfs $thome/ # if running with https://github.com/vmactions/shell-freebsd
           chown -R $tuser $thome/wbackup-zfs
           sudo -u $tuser sh -c "cd $thome/wbackup-zfs; ./test.sh"
+          echo wbackup-zfs-testrun-success
     - name: Upload code coverage report to workflow run page
       uses: ./.github/workflows/coverage-upload
 
@@ -321,50 +322,23 @@ jobs:
           echo Now running coverage; ./coverage.sh; if ($status != 0) exit 1
           
           echo Now running tests as non-root user:
-          find .
           set tuser = test
           set thome = /home/$tuser
-          echo xxx0 
-          echo $HOME
-          echo xxx0a
-          #mkdir -p /home
-          echo xxx01
-          #mkdir -p /home/foo
-          echo xxx02
           #pw userdel -n $tuser
           pw useradd $tuser -d $thome -m
-          echo xxx1
           echo "$tuser ALL=NOPASSWD:`command -v zfs`,`command -v zpool`" >> /usr/local/etc/sudoers
-          echo xxx2
-          cat /usr/local/etc/sudoers
-          echo xxx2a
+          
           mkdir -p $thome/.ssh
-          echo xxx3
           cp -p $HOME/.ssh/id_rsa $HOME/.ssh/id_rsa.pub $HOME/.ssh/authorized_keys $thome/.ssh/
-          echo xxx4
-          #cat $HOME/.ssh/id_rsa.pub | sudo -u $tuser tee -a $thome/.ssh/authorized_keys > /dev/null
-          ls -al /home/test/.ssh
-          echo xxx4a
           chmod go-rwx $thome/.ssh/authorized_keys
-          echo xxx4b          
-          ls -al $HOME/.ssh
-          echo xxx5
-          ls -al /home/test/.ssh
-          echo xxx55
-          echo xxx6
           chown -R $tuser $thome/.ssh
-          echo xxx7
-
+          
           cp -Rp . $thome/wbackup-zfs # if running with Github Action
           # cp -Rp wbackup-zfs $thome/ # if running with https://github.com/vmactions/shell-freebsd
-          echo xxx8
           chown -R $tuser $thome/wbackup-zfs
-          echo xxx9
           chsh -s /bin/sh $tuser
-          echo xxx10
           sudo -u $tuser sh -c "cd $thome/wbackup-zfs; ./test.sh"; if ($status != 0) exit 1
-          echo xxx11
-
+          echo wbackup-zfs-testrun-success
     - name: Upload code coverage report to workflow run page
       uses: ./.github/workflows/coverage-upload  #chmod 600 $thome/.ssh/authorized_keys
 
@@ -381,13 +355,6 @@ jobs:
       uses: vmactions/solaris-vm@v1  # see https://github.com/vmactions/solaris-vm
       with:
         release: "11.4"
-#set HOME = $home
-#echo Now running tests as root user; ./test.sh
-#pw userdel -n $tuser || true
-#cat $HOME/.ssh/id_rsa.pub | tee -a $thome/.ssh/authorized_keys
-# cp -Rp wbackup-zfs $thome/ # if running with https://github.com/vmactions/shell-freebsd
-
-#        usesh: true
 #          pkg update --accept; reboot # FIXME: reboot disconnects
 #          pkg exact-install runtime/python-37  # FIXME: install fails
 #          pkg install runtime/python-39  # FIXME: install fails
@@ -454,6 +421,7 @@ jobs:
           # cp -rp wbackup-zfs $thome/ # if running with https://github.com/vmactions/shell-solaris
           chown -R $tuser $thome/wbackup-zfs
           sudo -u $tuser sh -c 'export PATH=/python3/bin:$PATH; '"cd $thome/wbackup-zfs; ./test.sh"
+          echo wbackup-zfs-testrun-success
     - name: Upload code coverage report to workflow run page
       uses: ./.github/workflows/coverage-upload
 
