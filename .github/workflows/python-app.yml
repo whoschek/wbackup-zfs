@@ -323,14 +323,12 @@ jobs:
           ls -al $HOME
           chsh -s /bin/sh
 
-          #echo Now running tests as root user; ./test.sh
           echo Now running coverage; ./coverage.sh
           
           echo Now running tests as non-root user:
           find .
           export tuser=test
           export thome=/usr/home/$tuser
-          #pw userdel -n $tuser || true
           echo xxx0 
           mkdir -p /usr/home
           echo xxx01
@@ -343,21 +341,20 @@ jobs:
 
           mkdir -p $thome/.ssh
           echo xxx3
-          cp -p $HOME/.ssh/id_rsa $HOME/.ssh/id_rsa.pub $HOME/.ssh/authorized_keys $thome/.ssh/
+          cp -p $HOME/.ssh/id_rsa $HOME/.ssh/id_rsa.pub $thome/.ssh/
+          echo xxx3a
+          cp -p $HOME/.ssh/authorized_keys $thome/.ssh/
           echo xxx4
-          #cat $HOME/.ssh/id_rsa.pub | tee -a $thome/.ssh/authorized_keys
           ls -al $HOME/.ssh
           echo xxx5
           ls -al /home/test/.ssh
           echo xxx55
-          #chmod 600 $thome/.ssh/authorized_keys
           echo xxx6
           chown -R $tuser $thome/.ssh
           echo xxx7
 
           cp -Rp . $thome/wbackup-zfs # if running with Github Action
           echo xxx8
-          # cp -Rp wbackup-zfs $thome/ # if running with https://github.com/vmactions/shell-freebsd
           chown -R $tuser $thome/wbackup-zfs
           echo xxx9
           chsh -s /bin/sh $tuser
@@ -366,7 +363,7 @@ jobs:
           echo xxx11
 
     - name: Upload code coverage report to workflow run page
-      uses: ./.github/workflows/coverage-upload
+      uses: ./.github/workflows/coverage-upload  #chmod 600 $thome/.ssh/authorized_keys
 
 
   test_solaris_11_4:
@@ -381,6 +378,11 @@ jobs:
       uses: vmactions/solaris-vm@v1  # see https://github.com/vmactions/solaris-vm
       with:
         release: "11.4"
+#echo Now running tests as root user; ./test.sh
+#pw userdel -n $tuser || true
+#cat $HOME/.ssh/id_rsa.pub | tee -a $thome/.ssh/authorized_keys
+# cp -Rp wbackup-zfs $thome/ # if running with https://github.com/vmactions/shell-freebsd
+
 #        usesh: true
 #          pkg update --accept; reboot # FIXME: reboot disconnects
 #          pkg exact-install runtime/python-37  # FIXME: install fails
