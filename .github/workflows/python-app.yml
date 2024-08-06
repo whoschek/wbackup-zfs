@@ -303,6 +303,7 @@ jobs:
           pkg install -y python3 sudo zstd pv mbuffer devel/py-coverage
         run: |
           set -e
+          set -x
           id -u -n
           uname -a
           zfs --version || true
@@ -325,6 +326,7 @@ jobs:
           #echo Now running coverage; ./coverage.sh || exit 1
           
           echo Now running tests as non-root user:
+          find .
           export tuser=test
           export thome=/home/$tuser
           #pw userdel -n $tuser || true
