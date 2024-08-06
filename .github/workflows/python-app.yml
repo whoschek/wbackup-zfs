@@ -277,8 +277,7 @@ jobs:
           chmod go-rwx $thome/.ssh/authorized_keys
           chown -R $tuser $thome/.ssh
 
-          cp -Rp . $thome/wbackup-zfs # if running with Github Action
-          # cp -Rp wbackup-zfs $thome/ # if running with https://github.com/vmactions/shell-freebsd
+          cp -Rp . $thome/wbackup-zfs
           chown -R $tuser $thome/wbackup-zfs
           sudo -u $tuser sh -c "cd $thome/wbackup-zfs; ./test.sh"
           echo wbackup-zfs-testrun-success
