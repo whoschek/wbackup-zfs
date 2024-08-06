@@ -325,9 +325,11 @@ jobs:
           set tuser = test
           set thome = /home/$tuser
           echo xxx0 
-          mkdir -p /home
+          echo $HOME
+          echo xxx0a
+          #mkdir -p /home
           echo xxx01
-          mkdir -p /home/foo
+          #mkdir -p /home/foo
           echo xxx02
           #pw userdel -n $tuser
           pw useradd $tuser -d $thome -m
@@ -358,7 +360,8 @@ jobs:
           chown -R $tuser $thome/wbackup-zfs
           echo xxx9
           chsh -s /bin/sh $tuser
-          echo xxx10          
+          echo xxx10
+          exit 1
           sudo -u $tuser sh -c "cd $thome/wbackup-zfs; ./test.sh"; if ($status != 0) exit 1
           echo xxx11
 
