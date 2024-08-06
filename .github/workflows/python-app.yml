@@ -275,7 +275,7 @@ jobs:
           mkdir -p $thome/.ssh
           cp -p $HOME/.ssh/id_rsa $HOME/.ssh/id_rsa.pub $thome/.ssh/
           cat $HOME/.ssh/id_rsa.pub >> $thome/.ssh/authorized_keys
-          chmod go-rwx $thome/.ssh/authorized_keys
+          chmod 600 $thome/.ssh/authorized_keys
           chown -R $tuser $thome/.ssh
 
           cp -Rp . $thome/wbackup-zfs # if running with Github Action
@@ -340,7 +340,7 @@ jobs:
           echo xxx4
           cat $HOME/.ssh/id_rsa.pub >> $thome/.ssh/authorized_keys
           echo xxx5
-          chmod go-rwx $thome/.ssh/authorized_keys
+          chmod 600 $thome/.ssh/authorized_keys
           echo xxx6
           chown -R $tuser $thome/.ssh
           echo xxx7
