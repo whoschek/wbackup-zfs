@@ -337,7 +337,7 @@ jobs:
           echo xxx2a
           mkdir -p $thome/.ssh
           echo xxx3
-          cp -p $HOME/.ssh/id_rsa $HOME/.ssh/id_rsa.pub $thome/.ssh/authorized_keys $thome/.ssh/
+          cp -p $HOME/.ssh/id_rsa $HOME/.ssh/id_rsa.pub $HOME/.ssh/authorized_keys $thome/.ssh/
           echo xxx4
           #cat $HOME/.ssh/id_rsa.pub | sudo -u $tuser tee -a $thome/.ssh/authorized_keys > /dev/null
           echo xxx4a
