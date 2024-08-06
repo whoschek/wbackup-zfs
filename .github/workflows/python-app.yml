@@ -347,7 +347,7 @@ jobs:
           echo xxx4
           ls -al $HOME/.ssh
           echo xxx5
-          ls -al /home/test/.ssh
+          ls -al /usr/home/test/.ssh
           echo xxx55
           echo xxx6
           chown -R $tuser $thome/.ssh
