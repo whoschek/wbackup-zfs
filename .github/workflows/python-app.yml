@@ -245,6 +245,7 @@ jobs:
           pkg install -y python3 sudo zstd pv mbuffer devel/py-coverage
         run: |
           set -e
+          set -x
           id -u -n
           uname -a
           zfs --version || true
@@ -262,8 +263,8 @@ jobs:
           cat $HOME/.ssh/id_rsa.pub >> $HOME/.ssh/authorized_keys
           ls -al $HOME $HOME/.ssh/id_rsa
 
-          echo Now running tests as root user; ./test.sh || exit 1
-          echo Now running coverage; ./coverage.sh || exit 1
+          echo Now running tests as root user; ./test.sh
+          echo Now running coverage; ./coverage.sh
           
           echo Now running tests as non-root user:
           export tuser=test
@@ -306,6 +307,7 @@ jobs:
           set -x
           id -u -n
           uname -a
+          false
           zfs --version || true
           python3 --version
           ssh -V
@@ -322,8 +324,8 @@ jobs:
           ls -al $HOME
           chsh -s /bin/sh
 
-          echo Now running tests as root user; ./test.sh || exit 1
-          echo Now running coverage; ./coverage.sh || exit 1
+          echo Now running tests as root user; ./test.sh
+          echo Now running coverage; ./coverage.sh
           
           echo Now running tests as non-root user:
           find .
