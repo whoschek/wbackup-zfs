@@ -318,8 +318,8 @@ jobs:
           ls -al $HOME
           chsh -s /bin/sh
 
-          #echo Now running tests as root user; ./test.sh
-          #echo Now running coverage; ./coverage.sh; if ($status != 0) exit 1
+          echo Now running tests as root user; ./test.sh; if ($status != 0) exit 1
+          echo Now running coverage; ./coverage.sh; if ($status != 0) exit 1
           
           echo Now running tests as non-root user:
           find .
