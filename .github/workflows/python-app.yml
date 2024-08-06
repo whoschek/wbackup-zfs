@@ -342,7 +342,7 @@ jobs:
           cp -p $HOME/.ssh/id_rsa $HOME/.ssh/id_rsa.pub $HOME/.ssh/authorized_keys $thome/.ssh/
           echo xxx4
           #cat $HOME/.ssh/id_rsa.pub | tee -a $thome/.ssh/authorized_keys
-          ls -al .ssh
+          ls -al $HOME/.ssh
           echo xxx5
           ls -al /home/test/.ssh
           echo xxx55
