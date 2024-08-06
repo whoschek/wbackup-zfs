@@ -280,11 +280,11 @@ jobs:
 
           mkdir -p $thome/.ssh
           cp -p $HOME/.ssh/id_rsa $HOME/.ssh/id_rsa.pub $HOME/.ssh/authorized_keys $thome/.ssh/
-          chmod go-rwx $thome/.ssh/authorized_keys
-          chown -R $tuser $thome/.ssh
+          chmod go-rwx "$thome/.ssh/authorized_keys"
+          chown -R "$tuser" "$thome/.ssh"
 
           cp -R . "$thome/wbackup-zfs"
-          chown -R $tuser "$thome/wbackup-zfs"
+          chown -R "$tuser" "$thome/wbackup-zfs"
           sudo -u $tuser sh -c "cd $thome/wbackup-zfs; ./test.sh"
           echo "wbackup-zfs-testrun-success"
     - name: Upload code coverage report to workflow run page
