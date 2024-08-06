@@ -259,12 +259,12 @@ jobs:
           cat $HOME/.ssh/id_rsa.pub >> $HOME/.ssh/authorized_keys
           ls -al $HOME $HOME/.ssh/id_rsa
 
-          echo Now running tests as root user; ./test.sh
-          echo Now running coverage; ./coverage.sh
+          echo Now running tests as root user; ./test.sh || exit 1
+          echo Now running coverage; ./coverage.sh || exit 1
           
           echo Now running tests as non-root user:
-          export tuser=test
-          export thome=/home/$tuser
+          tuser=test
+          thome=/home/$tuser
           #pw userdel -n $tuser || true
           pw useradd $tuser -d $thome -m
           echo "$tuser ALL=NOPASSWD:$(command -v zfs),$(command -v zpool)" >> /usr/local/etc/sudoers
@@ -278,7 +278,7 @@ jobs:
           cp -Rp . $thome/wbackup-zfs # if running with Github Action
           # cp -Rp wbackup-zfs $thome/ # if running with https://github.com/vmactions/shell-freebsd
           chown -R $tuser $thome/wbackup-zfs
-          sudo -u $tuser sh -c "cd $thome/wbackup-zfs; ./test.sh"
+          sudo -u $tuser sh -c "cd $thome/wbackup-zfs; ./test.sh" || exit 1
     - name: Upload code coverage report to workflow run page
       uses: ./.github/workflows/coverage-upload
 
@@ -299,7 +299,6 @@ jobs:
         run: |
           id -u -n
           uname -a
-          false
           zfs --version || true
           python3 --version
           ssh -V
@@ -316,12 +315,12 @@ jobs:
           ls -al $HOME
           chsh -s /bin/sh
 
-          echo Now running coverage; ./coverage.sh
+          echo Now running coverage; ./coverage.sh || exit 1
           
           echo Now running tests as non-root user:
           find .
-          export tuser=test
-          export thome=/usr/home/$tuser
+          tuser=test
+          thome=/usr/home/$tuser
           echo xxx0 
           mkdir -p /usr/home
           echo xxx01
@@ -352,7 +351,7 @@ jobs:
           echo xxx9
           chsh -s /bin/sh $tuser
           echo xxx10          
-          sudo -u $tuser sh -c "cd $thome/wbackup-zfs; ./test.sh"
+          sudo -u $tuser sh -c "cd $thome/wbackup-zfs; ./test.sh" || exit 1
           echo xxx11
 
     - name: Upload code coverage report to workflow run page
