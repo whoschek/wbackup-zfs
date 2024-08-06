@@ -350,7 +350,7 @@ jobs:
           echo xxx9
           chsh -s /bin/sh $tuser
           echo xxx10          
-          sudo -u $tuser sh -c "cd $thome/wbackup-zfs; if ($status != 0) exit 1
+          sudo -u $tuser sh -c "cd $thome/wbackup-zfs; ./test.sh"; if ($status != 0) exit 1
           echo xxx11
 
     - name: Upload code coverage report to workflow run page
