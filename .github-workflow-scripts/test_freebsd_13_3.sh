@@ -33,7 +33,7 @@ ssh-keygen -t rsa -f $HOME/.ssh/id_rsa -q -N ""  # create private key and public
 cat $HOME/.ssh/id_rsa.pub >> $HOME/.ssh/authorized_keys
 ls -al $HOME $HOME/.ssh/id_rsa
 
-chsh -s /bin/sh
+chsh -s /bin/sh  # change shell as default shell on freebsd <= 13 is csh instead of sh
 echo "Now running tests as root user"; ./test.sh
 echo "Now running coverage"; ./coverage.sh
 
@@ -51,5 +51,5 @@ chown -R "$tuser" "$thome/.ssh"
 
 cp -R . "$thome/wbackup-zfs"
 chown -R "$tuser" "$thome/wbackup-zfs"
-chsh -s /bin/sh $tuser
+chsh -s /bin/sh $tuser  # change shell as default shell on freebsd <= 13 is csh instead of sh
 sudo -u $tuser sh -c "cd $thome/wbackup-zfs; ./test.sh"
