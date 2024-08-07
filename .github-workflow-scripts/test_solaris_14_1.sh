@@ -32,6 +32,7 @@ make
 rm -fr /python3
 make install
 
+cd ~
 id -u -n
 uname -a
 zfs help
