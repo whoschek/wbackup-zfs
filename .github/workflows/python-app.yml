@@ -245,7 +245,6 @@ jobs:
       with:
         release: "14.1"
         run: |
-          find .github
           ./.github-workflow-scripts/test_freebsd_14_1.sh
     - name: Upload code coverage report to workflow run page
       uses: ./.github/workflows/coverage-upload

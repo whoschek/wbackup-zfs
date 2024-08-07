@@ -15,7 +15,6 @@
 # limitations under the License.
 
 set -e # Exit immediately if a cmd returns a non-zero status
-set -x
 pkg install -y python3 sudo zstd pv mbuffer devel/py-coverage
 id -u -n
 uname -a

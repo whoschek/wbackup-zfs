@@ -15,12 +15,7 @@
 # limitations under the License.
 
 # To better debug these steps run a tmp solaris VM like so: https://github.com/vmactions/shell-solaris
-
-#pkg update --accept; reboot # FIXME: reboot disconnects
-#pkg exact-install runtime/python-37  # FIXME: install fails
-#pkg install runtime/python-39  # FIXME: install fails
-#pkg search python
-set -e
+set -e # Exit immediately if a cmd returns a non-zero status
 id -u -n
 pkg install sudo pv || true
 pkgutil -y -i zstd mbuffer
@@ -79,3 +74,8 @@ cp -rp . $thome/wbackup-zfs # if running with Github Action
 chown -R $tuser $thome/wbackup-zfs
 sudo -u $tuser sh -c 'export PATH=/python3/bin:$PATH; '"cd $thome/wbackup-zfs; ./test.sh"
 echo "wbackup-zfs-testrun-success"
+
+#pkg update --accept; reboot # FIXME: reboot disconnects
+#pkg exact-install runtime/python-37  # FIXME: install fails
+#pkg install runtime/python-39  # FIXME: install fails
+#pkg search python
