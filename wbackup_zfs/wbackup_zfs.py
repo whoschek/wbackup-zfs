@@ -548,6 +548,10 @@ class Params:
         inject_params: Optional[Dict[str, bool]] = None,
     ):
         assert args is not None
+        swap = False
+        if swap:
+            swap_src_with_dst_attributes(args, "src", "dst")
+            args.root_dataset_pairs = [(dst, src) for src, dst in args.root_dataset_pairs]
         self.args: argparse.Namespace = args
         self.sys_argv: List[str] = sys_argv if sys_argv is not None else []
         self.inject_params: Dict[str, bool] = inject_params if inject_params is not None else {}  # for testing only
@@ -2464,6 +2468,50 @@ def validate_port(port: int, message: str):
         port = str(port)
     if port and not port.isdigit():
         die(message + f"must be empty or a positive integer: '{port}'")
+
+
+def swap_src_with_dst_attributes(namespace, src, dst):
+    patterns = [
+        (re.compile(rf"(.*)_{src}_(.*)"), re.compile(rf"(.*)_{dst}_(.*)"), rf"_{dst}_"),  # Infix: prefix&suffix capture
+        (re.compile(rf"{src}_(.*)"), re.compile(rf"{dst}_(.*)"), rf"{dst}_"),  # Prefix: suffix capture
+        (re.compile(rf"(.*)_{src}"), re.compile(rf"(.*)_{dst}"), rf"_{dst}"),  # Postfix: prefix capture
+    ]
+    ns_dict = vars(namespace)
+    done_keys = set()
+    for key in sorted(ns_dict.keys()):
+        found_dst_attr = False
+        key_matches_src_pattern = False
+        key_matches_dst_pattern = False
+        for src_regex, dst_regex, dst_pattern in patterns:
+            match = src_regex.fullmatch(key)
+            if match:
+                done_keys.add(key)
+                key_matches_src_pattern = True
+                if len(match.groups()) == 2:
+                    prefix, suffix = match.groups()  # Infix pattern
+                elif src_regex.pattern == rf"{src}_(.*)":
+                    prefix, suffix = "", match.group(1)  # Prefix pattern
+                else:
+                    assert src_regex.pattern == rf"(.*)_{src}"
+                    prefix, suffix = match.group(1), ""  # Postfix pattern
+                dst_key = f"{prefix}{dst_pattern}{suffix}"
+                if dst_key in ns_dict:
+                    ns_dict[key], ns_dict[dst_key] = ns_dict[dst_key], ns_dict[key]
+                    found_dst_attr = True
+                    done_keys.add(dst_key)
+                    break
+            else:
+                key_matches_dst_pattern = key_matches_dst_pattern or dst_regex.fullmatch(key)
+
+        if key_matches_src_pattern and not found_dst_attr:
+            raise SystemExit(f"Corresponding dst attribute not found for src attribute '{key}'")
+        if not key_matches_dst_pattern:
+            done_keys.add(key)
+
+    orphans = set(ns_dict.keys()).difference(done_keys)
+    if len(orphans) > 0:
+        raise SystemExit(f"Corresponding src attribute not found for dst attribute '{sorted(orphans)[0]}'")
+    return namespace
 
 
 #############################################################################

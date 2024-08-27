@@ -2446,6 +2446,101 @@ class TestArgumentParser(unittest.TestCase):
 
 
 #############################################################################
+class TestArgumentParserSwap(unittest.TestCase):
+
+    def test_swap_empty(self):
+        parser = argparse.ArgumentParser()
+        args = parser.parse_args([])
+        wbackup_zfs.swap_src_with_dst_attributes(args, "src", "dst")
+
+    def test_swap_success(self):
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--src_pool")
+        parser.add_argument("--dst_pool")
+        parser.add_argument("--origin_src_root_dataset")
+        parser.add_argument("--origin_dst_root_dataset")
+        parser.add_argument("--ssh_user_src")
+        parser.add_argument("--ssh_user_dst")
+        parser.add_argument("--recursive")
+        parser.add_argument("--verbose")
+        args = parser.parse_args(
+            [
+                "--src_pool=pool_src",
+                "--dst_pool=pool_dst",
+                "--origin_src_root_dataset=src_root",
+                "--origin_dst_root_dataset=dst_root",
+                "--ssh_user_src=user_src",
+                "--ssh_user_dst=user_dst",
+                "--recursive=true",
+                "--verbose=false",
+            ]
+        )
+        result = wbackup_zfs.swap_src_with_dst_attributes(args, "src", "dst")
+        self.assertEqual(result.src_pool, "pool_dst")
+        self.assertEqual(result.dst_pool, "pool_src")
+        self.assertEqual(result.origin_src_root_dataset, "dst_root")
+        self.assertEqual(result.origin_dst_root_dataset, "src_root")
+        self.assertEqual(result.ssh_user_src, "user_dst")
+        self.assertEqual(result.ssh_user_dst, "user_src")
+        self.assertEqual(result.recursive, "true")  # Should remain unchanged
+        self.assertEqual(result.verbose, "false")  # Should remain unchanged
+
+    def test_missing_src_attribute(self):
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--origin_dst_root_dataset")
+        parser.add_argument("--dst_pool")
+        parser.add_argument("--ssh_user_dst")
+        parser.add_argument("--recursive")
+        parser.add_argument("--verbose")
+        args = parser.parse_args(["--origin_dst_root_dataset=ds_dst", "--dst_pool=pool_dst", "--recursive=true"])
+        with self.assertRaises(SystemExit) as e:
+            wbackup_zfs.swap_src_with_dst_attributes(args, "src", "dst")
+        self.assertIn("dst_pool", str(e.exception))
+
+    def test_missing_dst_attribute(self):
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--src_pool")
+        parser.add_argument("--origin_src_root_dataset")
+        parser.add_argument("--ssh_user_src")
+        parser.add_argument("--verbose")
+        args = parser.parse_args(
+            [
+                "--src_pool=pool_src",
+                "--origin_src_root_dataset=src_root",
+                "--ssh_user_src=user_src",
+                "--verbose=false",
+            ]
+        )
+        with self.assertRaises(SystemExit) as e:
+            wbackup_zfs.swap_src_with_dst_attributes(args, "src", "dst")
+        self.assertIn("origin_src_root_dataset", str(e.exception))
+
+    def test_mixed_attributes_some_unpaired(self):
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--src_pool")
+        parser.add_argument("--dst_pool")
+        parser.add_argument("--origin_src_root_dataset")
+        parser.add_argument("--ssh_user_src")
+        parser.add_argument("--ssh_user_dst")
+        parser.add_argument("--recursive")
+        parser.add_argument("--verbose")
+        args = parser.parse_args(
+            [
+                "--src_pool=pool_src",
+                "--dst_pool=pool_dst",
+                "--origin_src_root_dataset=src_root",
+                "--ssh_user_src=user_src",
+                "--ssh_user_dst=user_dst",
+                "--recursive=true",
+                "--verbose=false",
+            ]
+        )
+        with self.assertRaises(SystemExit) as e:
+            wbackup_zfs.swap_src_with_dst_attributes(args, "src", "dst")
+        self.assertIn("origin_src_root_dataset", str(e.exception))
+
+
+#############################################################################
 class TestPythonVersionCheck(unittest.TestCase):
     """Test version check near top of program:
     if sys.version_info < (3, 7):
@@ -3009,6 +3104,7 @@ def main():
     suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCheckRange))
     suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestHelperFunctions))
     suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestArgumentParser))
+    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestArgumentParserSwap))
     suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestPythonVersionCheck))
     suite.addTests(unittest.TestLoader().loadTestsFromTestCase(ExcludeSnapshotRegexValidationCase))
     suite.addTest(ParametrizedTestCase.parametrize(ExcludeSnapshotRegexTestCase, {"verbose": True}))
