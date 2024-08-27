@@ -29,7 +29,7 @@ def main():
     pip install argparse-manpage
     argparse-manpage --pyfile wbackup_zfs/wbackup_zfs.py --function argument_parser > /tmp/manpage.1
     pandoc -s -t markdown /tmp/manpage.1 -o /tmp/manpage.md
-    Then take that output, clean it and replace certain sections of README.md with it, as shown below:
+    Then take that output, auto-clean it and auto-replace certain sections of README.md with it, as shown below:
     """
     if len(sys.argv) != 3:
         print(f"Usage: {os.path.basename(sys.argv[0])} /path/to/wbackup_zfs.py path/to/README.md")
@@ -51,11 +51,11 @@ def main():
     # Step 3: Clean up markdown file
     with open(tmp_manpage_md_path, "r", encoding="utf-8") as file:
         content = file.read()
-    content = re.sub(r"\\([`#-_|>\[\*])", r"\1", content)  # s/\\\([`#-_|>\[\*]\)/\1/g
+    content = re.sub(r"\\([`#-_|>\[*])", r"\1", content)  # s/\\\([`#-_|>\[\*]\)/\1/g
     content = re.sub(r"\\'", r"'", content)  # s/\\\'/'/g
-    content = re.sub(r"\\\]", r"\]", content)  # s/\\\]/\]/g
+    content = re.sub(r"\\]", r"\]", content)  # s/\\\]/\]/g
     content = re.sub(r"# OPTIONS", "", content)  # s/# OPTIONS//g
-    content = re.sub(r":   ", r"*  ", content)  # s/:   /*  /g
+    content = re.sub(r": {3}", r"*  ", content)  # s/:   /*  /g
     with open(tmp_manpage_md_path, "w", encoding="utf-8") as file:
         file.write(content)
 
