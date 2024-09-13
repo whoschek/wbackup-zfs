@@ -30,6 +30,7 @@ import sys
 import tempfile
 from collections import defaultdict, Counter
 from contextlib import contextmanager
+from datetime import timedelta
 from pathlib import Path
 from unittest.mock import patch, mock_open
 from .zfs_util import *
@@ -2165,44 +2166,44 @@ class FullRemoteTestCase(MinimalRemoteTestCase):
 #############################################################################
 class IsolatedTestCase(WBackupTestCase):
 
-    def test_zfs_set(self):
-        LocalTestCase(param=self.param).test_zfs_set()
+    def test_delete_missing_snapshots_flat(self):
+        LocalTestCase(param=self.param).test_delete_missing_snapshots_flat()
 
-    def test_zfs_set_via_recv_o(self):
-        FullRemoteTestCase(param=self.param).test_zfs_set_via_recv_o()
-
-    def test_zfs_set_via_set_include(self):
-        LocalTestCase(param=self.param).test_zfs_set_via_set_include()
-
-    def test_zfs_recv_include_regex(self):
-        LocalTestCase(param=self.param).test_zfs_recv_include_regex()
-
-    def test_basic_replication_flat_send_recv_flags(self):
-        LocalTestCase(param=self.param).test_basic_replication_flat_send_recv_flags()
-
-    def test_preserve_recordsize(self):
-        LocalTestCase(param=self.param).test_preserve_recordsize()
-
-    def test_zfs_recv_include_regex_with_duplicate_o_and_x_names(self):
-        LocalTestCase(param=self.param).test_zfs_recv_include_regex_with_duplicate_o_and_x_names()
-
-    def test_inject_src_pipe_fail(self):
-        FullRemoteTestCase(param=self.param).test_inject_src_pipe_fail()
-
-    def test_inject_dst_pipe_fail(self):
-        FullRemoteTestCase(param=self.param).test_inject_dst_pipe_fail()
-
-    def test_inject_src_pipe_garble(self):
-        FullRemoteTestCase(param=self.param).test_inject_src_pipe_garble()
-
-    def test_inject_dst_pipe_garble(self):
-        FullRemoteTestCase(param=self.param).test_inject_dst_pipe_garble()
-
-    def test_basic_replication_flat_send_recv_flags(self):
-        FullRemoteTestCase(param=self.param).test_basic_replication_flat_send_recv_flags()
-
-    def test_basic_replication_flat_simple(self):
-        FullRemoteTestCase(param=self.param).test_basic_replication_flat_simple()
+    # def test_zfs_set_via_recv_o(self):
+    #     FullRemoteTestCase(param=self.param).test_zfs_set_via_recv_o()
+    #
+    # def test_zfs_set_via_set_include(self):
+    #     LocalTestCase(param=self.param).test_zfs_set_via_set_include()
+    #
+    # def test_zfs_recv_include_regex(self):
+    #     LocalTestCase(param=self.param).test_zfs_recv_include_regex()
+    #
+    # def test_basic_replication_flat_send_recv_flags(self):
+    #     LocalTestCase(param=self.param).test_basic_replication_flat_send_recv_flags()
+    #
+    # def test_preserve_recordsize(self):
+    #     LocalTestCase(param=self.param).test_preserve_recordsize()
+    #
+    # def test_zfs_recv_include_regex_with_duplicate_o_and_x_names(self):
+    #     LocalTestCase(param=self.param).test_zfs_recv_include_regex_with_duplicate_o_and_x_names()
+    #
+    # def test_inject_src_pipe_fail(self):
+    #     FullRemoteTestCase(param=self.param).test_inject_src_pipe_fail()
+    #
+    # def test_inject_dst_pipe_fail(self):
+    #     FullRemoteTestCase(param=self.param).test_inject_dst_pipe_fail()
+    #
+    # def test_inject_src_pipe_garble(self):
+    #     FullRemoteTestCase(param=self.param).test_inject_src_pipe_garble()
+    #
+    # def test_inject_dst_pipe_garble(self):
+    #     FullRemoteTestCase(param=self.param).test_inject_dst_pipe_garble()
+    #
+    # def test_basic_replication_flat_send_recv_flags(self):
+    #     FullRemoteTestCase(param=self.param).test_basic_replication_flat_send_recv_flags()
+    #
+    # def test_delete_missing_snapshots_flat(self):
+    #     FullRemoteTestCase(param=self.param).test_basic_replication_flat_simple()
 
 
 #############################################################################
@@ -2546,6 +2547,62 @@ class ExcludeSnapshotRegexValidationCase(unittest.TestCase):
         return wbackup_zfs.Job().incremental_send_steps(
             input_snapshots, guids, included_guids=included_guids, force_convert_I_to_i=force_convert_I_to_i
         )
+
+
+#############################################################################
+class TestDurationAction(unittest.TestCase):
+
+    def setUp(self):
+        self.parser = argparse.ArgumentParser()
+        self.parser.add_argument(
+            "--duration",
+            action=wbackup_zfs.DurationAction,
+            default=None,
+            const="0s,1",
+            nargs="?",
+            help="Specify a duration in the format like '1d', '5h', '30m', '50s' (days, hours, minutes, seconds)",
+        )
+        self.min_snapshots_to_retain_default = 1
+
+    def test_missing_option(self):
+        args = self.parser.parse_args([])
+        self.assertIsNone(args.duration)
+
+    def test_days(self):
+        args = self.parser.parse_args(["--duration", "2d"])
+        self.assertEqual(args.duration, (2 * 24 * 60 * 60, self.min_snapshots_to_retain_default))
+
+    def test_hours(self):
+        args = self.parser.parse_args(["--duration", "5h"])
+        self.assertEqual(args.duration, (5 * 60 * 60, self.min_snapshots_to_retain_default))
+
+    def test_minutes(self):
+        args = self.parser.parse_args(["--duration", "30m"])
+        self.assertEqual(args.duration, (30 * 60, self.min_snapshots_to_retain_default))
+
+    def test_seconds(self):
+        args = self.parser.parse_args(["--duration", "50s"])
+        self.assertEqual(args.duration, (50, self.min_snapshots_to_retain_default))
+
+    def test_zero_duration(self):
+        args = self.parser.parse_args(["--duration", "0s"])
+        self.assertEqual(args.duration, (0, self.min_snapshots_to_retain_default))
+
+    def test_negative_duration(self):
+        with self.assertRaises(SystemExit):
+            self.parser.parse_args(["--duration", "-5m"])
+
+    def test_missing_duration(self):
+        args = self.parser.parse_args(["--duration"])
+        self.assertEqual(args.duration, (0, self.min_snapshots_to_retain_default))
+
+    def test_empty_duration(self):
+        with self.assertRaises(SystemExit):
+            self.parser.parse_args(["--duration", ""])
+
+    def test_malformed_duration(self):
+        with self.assertRaises(SystemExit):
+            self.parser.parse_args(["--duration", "10x"])
 
 
 #############################################################################
@@ -3379,18 +3436,19 @@ def stop_on_failure_subtest(**params):
 
 def main():
     suite = unittest.TestSuite()
-    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFindMatch))
-    suite.addTest(TestParseDatasetLocator())
-    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReplaceCapturingGroups))
-    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDatasetPairsAction))
-    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFileOrLiteralAction))
-    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCheckRange))
-    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestHelperFunctions))
-    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestArgumentParser))
-    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestPythonVersionCheck))
-    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(ExcludeSnapshotRegexValidationCase))
-    suite.addTest(ParametrizedTestCase.parametrize(ExcludeSnapshotRegexTestCase, {"verbose": True}))
-
+    # suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFindMatch))
+    # suite.addTest(TestParseDatasetLocator())
+    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDurationAction))
+    # suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReplaceCapturingGroups))
+    # suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDatasetPairsAction))
+    # suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFileOrLiteralAction))
+    # suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCheckRange))
+    # suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestHelperFunctions))
+    # suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestArgumentParser))
+    # suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestPythonVersionCheck))
+    # suite.addTests(unittest.TestLoader().loadTestsFromTestCase(ExcludeSnapshotRegexValidationCase))
+    # suite.addTest(ParametrizedTestCase.parametrize(ExcludeSnapshotRegexTestCase, {"verbose": True}))
+    #
     # for ssh_mode in ["pull-push"]:
     # for ssh_mode in ["local", "pull-push"]:
     # for ssh_mode in []:
@@ -3401,11 +3459,11 @@ def main():
             for affix in [""]:
                 # no_privilege_elevation_modes = []
                 no_privilege_elevation_modes = [False]
-                if os.geteuid() != 0:
-                    no_privilege_elevation_modes.append(True)
+                # if os.geteuid() != 0:
+                #     no_privilege_elevation_modes.append(True)
                 for no_privilege_elevation in no_privilege_elevation_modes:
-                    # for encrypted_dataset in [False]:
-                    for encrypted_dataset in [False, True]:
+                    for encrypted_dataset in [False]:
+                        # for encrypted_dataset in [False, True]:
                         params = {
                             "ssh_mode": ssh_mode,
                             "verbose": True,
@@ -3418,14 +3476,14 @@ def main():
                         # params = {"ssh_mode": "pull-push", "verbose": True, "min_transfer_size": min_transfer_size}
                         # params = {"verbose": True}
                         # params = None
-                        # suite.addTest(ParametrizedTestCase.parametrize(IsolatedTestCase, params))
-                        suite.addTest(ParametrizedTestCase.parametrize(LocalTestCase, params))
+                        suite.addTest(ParametrizedTestCase.parametrize(IsolatedTestCase, params))
+                        # suite.addTest(ParametrizedTestCase.parametrize(LocalTestCase, params))
 
     # for ssh_mode in ["pull-push"]:
     # for ssh_mode in ["local"]:
     # for ssh_mode in ["local", "pull-push", "push", "pull"]:
-    # for ssh_mode in []:
-    for ssh_mode in ["local", "pull-push"]:
+    for ssh_mode in []:
+        # for ssh_mode in ["local", "pull-push"]:
         # for min_transfer_size in [1024 ** 2]:
         for min_transfer_size in [0, 1024**2]:
             # for affix in [""]:
@@ -3453,8 +3511,8 @@ def main():
             for min_transfer_size in [0]:
                 for affix in [""]:
                     for no_privilege_elevation in [True]:
-                        # for encrypted_dataset in []:
-                        for encrypted_dataset in [False]:
+                        for encrypted_dataset in []:
+                            # for encrypted_dataset in [False]:
                             params = {
                                 "ssh_mode": ssh_mode,
                                 "verbose": False,

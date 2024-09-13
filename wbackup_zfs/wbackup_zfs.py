@@ -37,7 +37,7 @@ import time
 import uuid
 from collections import defaultdict, Counter
 from contextlib import redirect_stdout, redirect_stderr
-from datetime import datetime
+from datetime import datetime, timedelta
 from subprocess import CalledProcessError, TimeoutExpired
 from typing import List, Dict, Any, Tuple, Optional, Iterable, Set
 
@@ -49,6 +49,7 @@ if sys.version_info < (3, 7):
     print(f"ERROR: {prog_name} requires Python version >= 3.7!", file=sys.stderr)
     sys.exit(die_status)
 exclude_dataset_regexes_default = r"(.*/)?[Tt][Ee]?[Mm][Pp][0-9]*"  # skip tmp datasets by default
+min_snapshots_to_retain_default = 1
 disable_prg = "-"
 env_var_prefix = "wbackup_zfs_"
 zfs_version_is_at_least_2_1_0 = "zfs>=2.1.0"
@@ -311,7 +312,13 @@ feature.
         help="Skip replication step (see above) and proceed to the optional --delete-missing-snapshots step "
              "immediately (see below).\n\n")
     parser.add_argument(
-        "--delete-missing-snapshots", action="store_true",
+        "--delete-snapshots", action=DurationAction, default=None, const="0s", nargs="?",
+        help=("XXXXX FIXME TODO. After successful replication, delete existing destination snapshots that do not exist within the source "
+              "dataset if they match at least one of --include-snapshot-regex but none of --exclude-snapshot-regex "
+              "and the destination dataset is included via --{include|exclude}-dataset-regex "
+              "--{include|exclude}-dataset policy. Does not recurse without --recursive.\n\n"))
+    parser.add_argument(
+        "--delete-missing-snapshots", action=DurationAction, default=None, const="0s", nargs="?",
         help=("After successful replication, delete existing destination snapshots that do not exist within the source "
               "dataset if they match at least one of --include-snapshot-regex but none of --exclude-snapshot-regex "
               "and the destination dataset is included via --{include|exclude}-dataset-regex "
@@ -659,7 +666,8 @@ class Params:
         self.no_stream: bool = args.no_stream
         self.delete_missing_datasets: bool = args.delete_missing_datasets
         self.delete_empty_datasets: bool = args.delete_missing_datasets
-        self.delete_missing_snapshots: bool = args.delete_missing_snapshots
+        self.delete_snapshots: Optional[Tuple[int, int]] = args.delete_snapshots
+        self.delete_missing_snapshots: Optional[Tuple[int, int]] = args.delete_missing_snapshots
         self.skip_replication: bool = args.skip_replication
         self.dry_run: bool = args.dryrun is not None
         self.dry_run_recv: str = "-n" if self.dry_run else ""
@@ -968,7 +976,10 @@ class Job:
             r.sudo, r.use_zfs_delegation = self.sudo_cmd(r.ssh_user_host, r.ssh_user)
             r.ssh_cmd = self.ssh_command(remote)
 
-        if src.ssh_host == dst.ssh_host:
+        no_overlap_check = src.ssh_host != dst.ssh_host or (
+            p.skip_replication and not p.delete_missing_snapshots and not p.delete_missing_datasets
+        )
+        if not no_overlap_check:
             if src.root_dataset == dst.root_dataset:
                 die(
                     f"Source and destination dataset must not be the same! "
@@ -1088,10 +1099,33 @@ class Job:
                     error(str(e))
                     error(f"#{len(self.all_exceptions)}: Replicating:", f"{src_dataset} --> {dst_dataset}")
 
+        if params.delete_snapshots is not None and not failed:
+            self.info(
+                "--delete-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-snapshots:",
+                f"{dst.origin_root_dataset} {p.recursive_flag} ...",
+            )
+            # TODO: maybe move prune logic from delete-missing-snapshots to delete-missing-datasets?
+            # TODO: research what pruning policies sanoid understands! let's not do something half-baked, at least do a branch
+            # TODO: maybe like zfs-autobackup: --keep-target 1d1w,1w1m,1m6m (keep one backup per day for one week, one per week for one month, one per month for six months)
+            # TODO: maybe add a new subcommand instead of a new phase? separate file will making sharing code hard!
+            # TODO: maybe our tool is more about syncing than pruning and taking snaps and snap management in general?
+            # TODO: square through round hole? one of src or dst is unnecessary. specify the same or "-" or something, but don't want to modify src per high level policy.
+            # TODO: if src and dst and user_host are same then no need to do zfs list again - reuse src list? but what about user@src vs user@dst
+            # TODO: list snaps recursively for perf?
+            # TODO: some detection is unnecessary
+            # TODO: prune bookmarks too? but with different prune_config so separate --delete_bookmarks?
+            cmd = p.split_args(
+                f"{p.zfs_program} list -t filesystem,volume -Hp -o name", p.recursive_flag, dst.root_dataset
+            )
+            dst_datasets = self.run_ssh_command(dst, self.trace, check=False, cmd=cmd).splitlines()
+            dst_datasets = isorted(self.filter_datasets(dst_datasets, dst.root_dataset))  # apply include/exclude policy
+            for dst_dataset in dst_datasets:
+                self.prune_snapshots(dst, dst_dataset, params.delete_snapshots, [])
+
         # Optionally, delete existing destination snapshots that do not exist within the source dataset if they
         # match at least one of --include-snapshot-regex but none of --exclude-snapshot-regex and the destination
         # dataset is included via --{include|exclude}-dataset-regex --{include|exclude}-dataset policy
-        if params.delete_missing_snapshots and not failed:
+        if params.delete_missing_snapshots is not None and not failed:
             self.info(
                 "--delete-missing-snapshots:",
                 f"{src.origin_root_dataset} {p.recursive_flag} --> {dst.origin_root_dataset} ...",
@@ -1115,15 +1149,31 @@ class Job:
                     origin_src_datasets.remove(src_dataset)
                 else:
                     dst_dataset = dst.root_dataset + relativize_dataset(src_dataset, src.root_dataset)
-                    cmd = p.split_args(f"{p.zfs_program} list -t snapshot -d 1 -s name -Hp -o guid,name", dst_dataset)
-                    dst_snapshots_with_guids = self.run_ssh_command(dst, self.trace, check=False, cmd=cmd).splitlines()
-                    dst_snapshots_with_guids = self.filter_snapshots(dst_snapshots_with_guids)
-                    missing_snapshot_guids = set(cut(field=1, lines=dst_snapshots_with_guids)).difference(
-                        set(cut(1, lines=src_snapshots_with_guids))
-                    )
-                    missing_snapshot_tags = self.filter_lines(dst_snapshots_with_guids, missing_snapshot_guids)
-                    missing_snapshot_tags = cut(2, separator="@", lines=missing_snapshot_tags)
-                    self.delete_snapshots(dst_dataset, snapshot_tags=missing_snapshot_tags)
+                    self.prune_snapshots(dst, dst_dataset, params.delete_missing_snapshots, src_snapshots_with_guids)
+                    # cmd = p.split_args(
+                    #     f"{p.zfs_program} list -t snapshot -d 1 -s createtxg -Hp -o creation,guid,name", dst_dataset
+                    # )
+                    # dst_snapshots_with_guids = self.run_ssh_command(dst, self.trace, check=False, cmd=cmd).splitlines()
+                    #
+                    # duration_secs, min_snapshots_to_retain = params.delete_missing_snapshots
+                    # threshold = int(time.time()) - duration_secs
+                    # results = []
+                    # for snapshot in dst_snapshots_with_guids:
+                    #     creation_time, guid, name = snapshot.split("\t", 2)
+                    #     if duration_secs == 0 or int(creation_time) >= threshold:
+                    #         results.append(f"{guid}\t{name}")
+                    # dst_snapshots_with_guids = results
+                    #
+                    # dst_snapshots_with_guids = self.filter_snapshots(dst_snapshots_with_guids)
+                    # missing_snapshot_guids = set(cut(field=1, lines=dst_snapshots_with_guids)).difference(
+                    #     set(cut(1, lines=src_snapshots_with_guids))
+                    # )
+                    # missing_snapshot_tags = self.filter_lines(dst_snapshots_with_guids, missing_snapshot_guids)
+                    # missing_snapshot_tags = cut(2, separator="@", lines=missing_snapshot_tags)
+                    #
+                    # n = max(0, len(dst_snapshots_with_guids) - min_snapshots_to_retain)
+                    # missing_snapshot_tags = missing_snapshot_tags[0:n]
+                    # self.delete_snapshots(dst_dataset, snapshot_tags=missing_snapshot_tags)
 
         # Optionally, delete existing destination datasets that do not exist within the source dataset if they are
         # included via --{include|exclude}-dataset-regex --{include|exclude}-dataset policy.
@@ -1173,6 +1223,30 @@ class Job:
                             orphans.add(dst_dataset)  # found zero snapshots - mark dataset as an orphan
 
                 self.delete_datasets(orphans)
+
+    def prune_snapshots(self, remote, dataset, prune_config, src_snapshots_with_guids):
+        p = self.params
+        cmd = p.split_args(f"{p.zfs_program} list -t snapshot -d 1 -s createtxg -Hp -o creation,guid,name", dataset)
+        dst_snapshots_with_guids = self.run_ssh_command(remote, self.trace, check=False, cmd=cmd).splitlines()
+
+        duration_secs, min_snapshots_to_retain = prune_config
+        threshold = int(time.time()) - duration_secs
+        results = []
+        for snapshot in dst_snapshots_with_guids:
+            creation_time, guid, name = snapshot.split("\t", 2)
+            if duration_secs == 0 or int(creation_time) >= threshold:
+                results.append(f"{guid}\t{name}")
+        dst_snapshots_with_guids = results
+
+        dst_snapshots_with_guids = self.filter_snapshots(dst_snapshots_with_guids)
+        missing_snapshot_guids = set(cut(field=1, lines=dst_snapshots_with_guids)).difference(
+            set(cut(1, lines=src_snapshots_with_guids))
+        )
+        missing_snapshot_tags = self.filter_lines(dst_snapshots_with_guids, missing_snapshot_guids)
+        missing_snapshot_tags = cut(2, separator="@", lines=missing_snapshot_tags)
+        n = max(0, len(dst_snapshots_with_guids) - min_snapshots_to_retain)
+        missing_snapshot_tags = missing_snapshot_tags[0:n]
+        self.delete_snapshots(dataset, snapshot_tags=missing_snapshot_tags)
 
     def replicate_dataset(self, src_dataset: str, dst_dataset: str):
         """Replicate src_dataset (without handling descendants) to dst_dataset"""
@@ -2764,6 +2838,48 @@ class FileOrLiteralAction(argparse.Action):
                 except FileNotFoundError:
                     parser.error(f"File not found: {value[1:]}")
         setattr(namespace, self.dest, current_values)
+
+
+#############################################################################
+class DurationAction(argparse.Action):
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        if "," in values:
+            duration, min_snapshots_to_retain = values.strip().split(",")
+        else:
+            duration = values
+            min_snapshots_to_retain = str(min_snapshots_to_retain_default)
+        duration_seconds = self.parse_duration(duration.strip(), parser)
+        min_snapshots_to_retain = int(min_snapshots_to_retain.strip())
+        setattr(namespace, self.dest, (duration_seconds, min_snapshots_to_retain))
+
+    @staticmethod
+    def parse_duration(duration_str: str, parser) -> int:
+        if not duration_str or len(duration_str) < 2:
+            parser.error("Invalid duration: Empty or too short")
+
+        num = None
+        try:
+            num = int(duration_str[:-1])
+        except ValueError:
+            parser.error("Invalid duration: Must be an integer")
+
+        if num < 0:
+            parser.error("Invalid duration: Must be a non-negative integer")
+
+        unit = duration_str[-1]
+        duration = None
+        if unit == "d":
+            duration = timedelta(days=num)
+        elif unit == "h":
+            duration = timedelta(hours=num)
+        elif unit == "m":
+            duration = timedelta(minutes=num)
+        elif unit == "s":
+            duration = timedelta(seconds=num)
+        else:
+            parser.error(f"Invalid duration: Unrecognized time unit '{unit}'")
+        return int(duration.total_seconds())
 
 
 #############################################################################
