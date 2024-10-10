@@ -111,7 +111,7 @@ ZFS permissions by administrators via 'zfs allow' delegation mechanism.
 
 {prog_name} is written in Python and continously runs a wide set of unit tests and integration tests to ensure
 coverage and compatibility with old and new versions of ZFS on Linux, FreeBSD and Solaris, on all Python
-versions >= 3.7 (including latest stable which is currently python-3.12). 
+versions >= 3.7 (including latest stable which is currently python-3.13). 
 
 {prog_name} is a stand-alone program with zero required dependencies, consisting of a single file, akin to a 
 stand-alone shell script or binary executable. It is designed to be able to run in restricted barebones server 
@@ -2787,7 +2787,7 @@ class Job:
         Instead, retry the operation later and only execute it when it's become safe. For example, decline to start
         a 'zfs receive' into a destination dataset if another process is already running another 'zfs receive' into
         the same destination dataset. However, it's actually safe to run an incremental 'zfs receive' into a dataset
-        in parallel with a 'zfs send' out of the very same dataset. This helps daisy chain use cases where
+        in parallel with a 'zfs send' out of the very same dataset. This also helps daisy chain use cases where
         A replicates to B, and B replicates to C."""
         p = self.params
         if p.force or not self.is_program_available("ps", remote.location):
