@@ -1491,11 +1491,7 @@ class Job:
         p = params = self.params
         log = p.log
         src, dst = p.src, p.dst
-        if self.is_zfs_already_busy_receiving_dataset(dst, dst_dataset):
-            try:
-                die("Destination is already busy with zfs receive from another process: " + dst_dataset)
-            except SystemExit as e:
-                raise RetryableError("dst already busy with zfs receive") from e
+        done_checking = False
 
         # list GUID and name for dst snapshots, sorted ascending by txn (more precise than creation time)
         use_bookmark = params.use_bookmark and self.is_zpool_bookmarks_feature_enabled_or_active(src)
@@ -1591,6 +1587,7 @@ class Job:
                 if params.force_rollback_to_latest_snapshot or params.force:
                     log.info(p.dry("Rolling back destination to most recent snapshot: %s"), latest_dst_snapshot)
                     # rollback just in case the dst dataset was modified since its most recent snapshot
+                    done_checking = done_checking or self.check_zfs_dataset_busy(dst, dst_dataset)
                     cmd = p.split_args(f"{dst.sudo} {p.zfs_program} rollback", latest_dst_snapshot)
                     self.run_ssh_command(dst, log_debug, is_dry=p.dry_run, print_stdout=True, cmd=cmd)
             elif latest_src_snapshot == "":
@@ -1616,7 +1613,7 @@ class Job:
             log.trace("latest_dst_snapshot: %s", latest_dst_snapshot)
 
             if latest_common_src_snapshot and latest_common_guid != latest_dst_guid:
-                # common snapshot was found. rollback dst to that common snapshot
+                # common snapshot was found but dst has an even newer snapshot. rollback dst to that common snapshot.
                 _, latest_common_dst_snapshot = latest_common_snapshot(dst_snapshots_with_guids, {latest_common_guid})
                 if not params.force:
                     die(
@@ -1696,6 +1693,7 @@ class Job:
                     f"{dst.sudo} {p.zfs_program} receive -F", p.dry_run_recv, recv_opts, dst_dataset, allow_all=True
                 )
                 log.info(p.dry("Full zfs send: %s"), f"{oldest_src_snapshot} --> {dst_dataset} ({size_human}) ...")
+                done_checking = done_checking or self.check_zfs_dataset_busy(dst, dst_dataset)
                 dry_run_no_send = dry_run_no_send or params.dry_run_no_send
                 self.run_zfs_send_receive(
                     send_cmd, recv_cmd, size_bytes, size_human, dry_run_no_send, error_trigger="full_zfs_send"
@@ -1764,6 +1762,7 @@ class Job:
                     p.dry(f"Incremental zfs send {incr_flag}:%s"),
                     f"{from_snap} {to_snap} --> {dst_dataset} ({size_human}) ...",
                 )
+                done_checking = done_checking or self.check_zfs_dataset_busy(dst, dst_dataset, busy_if_send=False)
                 if p.dry_run and not self.dst_dataset_exists[dst_dataset]:
                     dry_run_no_send = True
                 dry_run_no_send = dry_run_no_send or params.dry_run_no_send
@@ -2783,18 +2782,38 @@ class Job:
             remote, "feature@bookmark_v2"
         ) and self.is_zpool_feature_enabled_or_active(remote, "feature@bookmark_written")
 
-    recv_proc_regex = re.compile(r"(.* )?zfs (receive|recv) .*".replace("(", "(?:"))  # non-capturing group
-
-    def is_zfs_already_busy_receiving_dataset(self, remote: Remote, dataset: str) -> bool:
-        """Checks whether the given dataset on the given remote is currently part of a 'zfs receive' process."""
-        if not self.is_program_available("ps", remote.location):
-            return False
+    def check_zfs_dataset_busy(self, remote: Remote, dataset: str, busy_if_send: bool = True) -> bool:
+        """Decline to start a state changing ZFS operation that may conflict with other currently running processes.
+        Instead, retry the operation later and only execute it when it's become safe. For example, decline to start
+        a 'zfs receive' into a destination dataset if another process is already running another 'zfs receive' into
+        the same destination dataset. However, it's actually safe to run an incremental 'zfs receive' into a dataset
+        in parallel with a 'zfs send' out of the very same dataset. This helps daisy chain use cases where
+        A replicates to B, and B replicates to C."""
         p = self.params
+        if p.force or not self.is_program_available("ps", remote.location):
+            return True
         cmd = p.split_args(f"{p.ps_program} -Ao args")
         procs = (self.try_ssh_command(remote, log_trace, cmd=cmd) or "").splitlines()
-        if self.inject_params.get("is_zfs_already_busy_receiving_dataset", False):
+        if self.inject_params.get("is_zfs_dataset_busy", False):
             procs += ["sudo zfs receive -u -o foo:bar=/baz " + dataset]  # for unit testing only
-        return any(proc.endswith(" " + dataset) and self.recv_proc_regex.fullmatch(proc) for proc in procs)
+        if not self.is_zfs_dataset_busy(procs, dataset, busy_if_send=busy_if_send):
+            return True
+        op = "zfs {create|destroy|receive|rollback" + ("|send" if busy_if_send else "") + "} operation"
+        try:
+            die(f"Cannot continue now: Destination is already busy with {op} from another process: {dataset}")
+        except BaseException as e:
+            raise RetryableError("dst currently busy with zfs mutation op") from e
+
+    # FIXME: move into instance
+    zfs_dataset_busy_prefix = r"(([^ ]*?/)?(sudo|doas) )?([^ ]*?/)?zfs (create|destroy|receive|recv|rollback"
+    zfs_dataset_busy_if_mods = re.compile(zfs_dataset_busy_prefix + ") .*".replace("(", "(?:"))
+    zfs_dataset_busy_if_send = re.compile(zfs_dataset_busy_prefix + "|send) .*".replace("(", "(?:"))
+
+    def is_zfs_dataset_busy(self, procs: List[str], dataset: str, busy_if_send: bool) -> bool:
+        regex = self.zfs_dataset_busy_if_send if busy_if_send else self.zfs_dataset_busy_if_mods
+        suffix = " " + dataset
+        infix = " " + dataset + "@"
+        return any((proc.endswith(suffix) or infix in proc) and regex.fullmatch(proc) for proc in procs)
 
     def get_max_command_line_bytes(self, location: str, os_name: Optional[str] = None) -> int:
         """Remote flavor of os.sysconf("SC_ARG_MAX") - size(os.environb) - safety margin"""
